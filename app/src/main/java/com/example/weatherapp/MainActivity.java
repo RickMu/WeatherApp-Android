@@ -2,9 +2,14 @@ package com.example.weatherapp;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.drawable.Drawable;
+import android.location.Location;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
+import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -18,6 +23,9 @@ import com.example.weatherapp.Weather.Current;
 import com.example.weatherapp.Weather.Day;
 import com.example.weatherapp.Weather.Forcast;
 import com.example.weatherapp.Weather.Hour;
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.LocationServices;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -34,21 +42,31 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
     private static final String TAG = MainActivity.class.getSimpleName();
     public static final String DAILY_FORCAST = "DAYILY_FORCAST";
     Forcast mForcast;
+    private double latitude = -37.814, longitude = 144.96332;
+    private GoogleApiClient mGoogleApiClient = null;
 
-
-    @BindView(R.id.humidityMeasureId) TextView mHumidity;
-    @BindView(R.id.precepValue) TextView mPrecepValue;
-    @BindView(R.id.precepLabel) TextView mPrecepLabel;
-    @BindView(R.id.temperatureId) TextView mTemperature;
-    @BindView(R.id.timeID) TextView mTime;
-    @BindView(R.id.weatherDescription) TextView mSummary;
-    @BindView (R.id.weatherIconId) ImageView mIconImageView;
-    @BindView (R.id.refreshImage) ImageView mRefreshImg;
-    @BindView(R.id.refreshProgress) ProgressBar mProgressBar;
+    @BindView(R.id.humidityMeasureId)
+    TextView mHumidity;
+    @BindView(R.id.precepValue)
+    TextView mPrecepValue;
+    @BindView(R.id.precepLabel)
+    TextView mPrecepLabel;
+    @BindView(R.id.temperatureId)
+    TextView mTemperature;
+    @BindView(R.id.timeID)
+    TextView mTime;
+    @BindView(R.id.weatherDescription)
+    TextView mSummary;
+    @BindView(R.id.weatherIconId)
+    ImageView mIconImageView;
+    @BindView(R.id.refreshImage)
+    ImageView mRefreshImg;
+    @BindView(R.id.refreshProgress)
+    ProgressBar mProgressBar;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,21 +75,26 @@ public class MainActivity extends AppCompatActivity {
         ButterKnife.bind(this);
         mProgressBar.setVisibility(View.INVISIBLE);
 
-        final double latitude= -37.814, longitude=144.96332;
+        if (mGoogleApiClient == null) {
+            mGoogleApiClient = new GoogleApiClient.Builder(this)
+                    .addConnectionCallbacks(this)
+                    .addOnConnectionFailedListener(this)
+                    .addApi(LocationServices.API)
+                    .build();
+        }
+
         mRefreshImg.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                getForcast(latitude,longitude);
+                getForcast(latitude, longitude);
             }
         });
 
-
-        getForcast(latitude, longitude);
     }
 
     private void getForcast(double latitude, double longitude) {
-        String secretKey= "3be6c051769f52fc39f671377b21b49b";
-        String forcastUrl="https://api.darksky.net/forecast/"+secretKey+ "/"+ latitude+ ","+longitude;
+        String secretKey = "3be6c051769f52fc39f671377b21b49b";
+        String forcastUrl = "https://api.darksky.net/forecast/" + secretKey + "/" + latitude + "," + longitude;
 
         if (isNetworkAvailable()) {
             toggleRefresh();
@@ -85,12 +108,12 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onFailure(Call call, IOException e) {
                     Log.e(TAG, "Failure to connect: ", e);
-
                 }
+
                 @Override
                 public void onResponse(Call call, Response response) {
                     try {
-                        String jsonData= response.body().string();
+                        String jsonData = response.body().string();
                         Log.v(TAG, jsonData);
                         if (response.isSuccessful()) {
                             try {
@@ -115,32 +138,34 @@ public class MainActivity extends AppCompatActivity {
 
                 }
             });
-        }else{
+        } else {
             Toast.makeText(this, "Network Connection Error", Toast.LENGTH_LONG).show();
         }
     }
 
     private void updateForcast() {
-        Current mCurrentWeather= mForcast.getCurrent();
-        mTemperature.setText(mCurrentWeather.getCelsius()+"");
-        mTime.setText("At time "+ mCurrentWeather.getFormatedTime()+" it will be");
-        mHumidity.setText(mCurrentWeather.getHumidity()+"");
-        mPrecepValue.setText(mCurrentWeather.getPrecipProbaility()+"%");
+        Current mCurrentWeather = mForcast.getCurrent();
+        mTemperature.setText(mCurrentWeather.getCelsius() + "");
+        mTime.setText("At time " + mCurrentWeather.getFormatedTime() + " it will be");
+        mHumidity.setText(mCurrentWeather.getHumidity() + "");
+        mPrecepValue.setText(mCurrentWeather.getPrecipProbaility() + "%");
         mSummary.setText(mCurrentWeather.getSummary());
 
         Drawable drawable = getResources().getDrawable(mCurrentWeather.getIconId());
         mIconImageView.setImageDrawable(drawable);
     }
-    private void toggleRefresh(){
-        if(mProgressBar.getVisibility()== View.INVISIBLE){
+
+    private void toggleRefresh() {
+        if (mProgressBar.getVisibility() == View.INVISIBLE) {
             mProgressBar.setVisibility(View.VISIBLE);
             mRefreshImg.setVisibility(View.INVISIBLE);
-        }else{
+        } else {
             mRefreshImg.setVisibility(View.VISIBLE);
             mProgressBar.setVisibility(View.INVISIBLE);
         }
 
     }
+
     private Forcast parseForcastDetails(String jsonData) throws JSONException {
         Forcast forcast = new Forcast();
 
@@ -151,22 +176,22 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private Day[] getDailyForcast(String jsonData) throws JSONException {
-        JSONObject weatherData= new JSONObject(jsonData);
+        JSONObject weatherData = new JSONObject(jsonData);
         String timeZone = weatherData.getString("timezone");
-        JSONObject dailyDataJSON= weatherData.getJSONObject("daily");
+        JSONObject dailyDataJSON = weatherData.getJSONObject("daily");
         JSONArray dailyDataJSONArray = dailyDataJSON.getJSONArray("data");
-        Day[] dailyData= new Day[dailyDataJSONArray.length()];
+        Day[] dailyData = new Day[dailyDataJSONArray.length()];
 
-        for( int i = 0 ;i<dailyDataJSONArray.length();i++){
+        for (int i = 0; i < dailyDataJSONArray.length(); i++) {
             JSONObject daily = dailyDataJSONArray.getJSONObject(i);
             Day day = new Day();
-            day.setTime(    daily.getLong("time")   );
-            day.setIcon(    daily.getString("icon") );
-            day.setSummary( daily.getString("summary"));
-            day.setTemperatureMax(  daily.getDouble("temperatureMax"));
+            day.setTime(daily.getLong("time"));
+            day.setIcon(daily.getString("icon"));
+            day.setSummary(daily.getString("summary"));
+            day.setTemperatureMax(daily.getDouble("temperatureMax"));
             day.setTimeZone(timeZone);
 
-            dailyData[i]=day;
+            dailyData[i] = day;
 
         }
 
@@ -176,21 +201,21 @@ public class MainActivity extends AppCompatActivity {
 
     private Hour[] getHourlyForcast(String jsonData) throws JSONException {
 
-        JSONObject weatherData= new JSONObject(jsonData);
+        JSONObject weatherData = new JSONObject(jsonData);
         String timeZone = weatherData.getString("timezone");
-        JSONObject hourlyDataJSON= weatherData.getJSONObject("hourly");
+        JSONObject hourlyDataJSON = weatherData.getJSONObject("hourly");
         JSONArray hourlyDataJSONArray = hourlyDataJSON.getJSONArray("data");
-        Hour[] hourlyData= new Hour[hourlyDataJSONArray.length()];
+        Hour[] hourlyData = new Hour[hourlyDataJSONArray.length()];
 
-        for( int i = 0 ;i<hourlyDataJSONArray.length();i++){
+        for (int i = 0; i < hourlyDataJSONArray.length(); i++) {
             JSONObject hourly = hourlyDataJSONArray.getJSONObject(i);
             Hour hour = new Hour();
-            hour.setTime(    hourly.getLong("time")   );
-            hour.setIcon(    hourly.getString("icon") );
-            hour.setSummary( hourly.getString("summary"));
-            hour.setTemperorary(  hourly.getDouble("temperature"));
+            hour.setTime(hourly.getLong("time"));
+            hour.setIcon(hourly.getString("icon"));
+            hour.setSummary(hourly.getString("summary"));
+            hour.setTemperorary(hourly.getDouble("temperature"));
             hour.setTimeZone(timeZone);
-            hourlyData[i]=hour;
+            hourlyData[i] = hour;
 
         }
         return hourlyData;
@@ -203,15 +228,15 @@ public class MainActivity extends AppCompatActivity {
 
         Current currentWeather = new Current();
 
-        currentWeather.setHumidity( currently.getDouble("humidity"));
-        currentWeather.setPrecipProbaility( currently.getDouble("precipProbability"));
-        currentWeather.setTemperature( currently.getDouble("temperature"));
-        currentWeather.setIcon( currently.getString("icon"));
+        currentWeather.setHumidity(currently.getDouble("humidity"));
+        currentWeather.setPrecipProbaility(currently.getDouble("precipProbability"));
+        currentWeather.setTemperature(currently.getDouble("temperature"));
+        currentWeather.setIcon(currently.getString("icon"));
         currentWeather.setSummary(currently.getString("summary"));
         currentWeather.setTimeZone(timeZone);
         currentWeather.setTime(currently.getLong("time"));
 
-        Log.d(TAG, currentWeather.getTime()+"");
+        Log.d(TAG, currentWeather.getTime() + "");
         return currentWeather;
 
     }
@@ -221,22 +246,59 @@ public class MainActivity extends AppCompatActivity {
                 getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo info = manager.getActiveNetworkInfo();
 
-        boolean isAvalilable= false;
-        if(info!=null && info.isConnected()){
-            isAvalilable=true;
+        boolean isAvalilable = false;
+        if (info != null && info.isConnected()) {
+            isAvalilable = true;
         }
         return isAvalilable;
     }
 
     private void alertUserAboutError() {
         AlertDialogFragment alert = new AlertDialogFragment();
-        alert.show(getFragmentManager(),"error_dialog");
+        alert.show(getFragmentManager(), "error_dialog");
     }
 
     @OnClick(R.id.dailyButton)
-    public void startDailyActivity(View view){
-        Intent intent = new Intent(this,DailyForcastActivity.class);
+    public void startDailyActivity(View view) {
+        Intent intent = new Intent(this, DailyForcastActivity.class);
         intent.putExtra(DAILY_FORCAST, mForcast.getDailyForcast());
         startActivity(intent);
+    }
+
+    @Override
+    public void onConnected(@Nullable Bundle bundle) {
+
+
+        Location location = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
+        this.latitude = location.getLatitude();
+        this.longitude = location.getLongitude();
+        Log.v(TAG,"Location is possibily read: "+latitude +", "+longitude );
+        getForcast(latitude, longitude);
+
+
+    }
+
+    @Override
+    public void onConnectionSuspended(int i) {
+        Log.i(TAG, "Connection suspended");
+        mGoogleApiClient.connect();
+    }
+
+    @Override
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+        Log.i(TAG, "Connection failed: ConnectionResult.getErrorCode() = " + connectionResult.getErrorCode());
+
+    }
+
+    @Override
+    protected void onStart() {
+        mGoogleApiClient.connect();
+        super.onStart();
+    }
+
+    @Override
+    protected void onStop() {
+        mGoogleApiClient.disconnect();
+        super.onStop();
     }
 }

@@ -73,5 +73,6 @@ public class DayAdapter extends BaseAdapter {
         ImageView iconImageView; // public by default
         TextView temperatureLabel;
         TextView dayLabel;
+
     }
 }

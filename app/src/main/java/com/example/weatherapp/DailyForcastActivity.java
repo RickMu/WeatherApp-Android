@@ -18,12 +18,14 @@ public class DailyForcastActivity extends ListActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        setContentView(R.layout.activity_daily_forcast);
+
         Intent intent = getIntent();
         Parcelable[] parcelables= intent.getParcelableArrayExtra(MainActivity.DAILY_FORCAST);
         mDays= Arrays.copyOf(parcelables, parcelables.length, Day[].class);
         DayAdapter adapter = new DayAdapter(mDays, this);
         setListAdapter(adapter);
-        setContentView(R.layout.activity_daily_forcast);
+
 
 
     }
